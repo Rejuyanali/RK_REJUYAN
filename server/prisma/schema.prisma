@@ -1,0 +1,209 @@
+// Prisma schema for file hosting platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum FileVisibility {
+  PUBLIC
+  PRIVATE
+  UNLISTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String?
+  role          UserRole  @default(USER)
+  premiumUntil  DateTime?
+  apiKey        String?   @unique
+  googleId      String?   @unique
+  
+  // Stats
+  totalUploads  Int       @default(0)
+  totalDownloads Int      @default(0)
+  totalEarnings Int       @default(0) // in cents
+  
+  // Security
+  banned        Boolean   @default(false)
+  banReason     String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  files         File[]
+  payouts       Payout[]
+  
+  @@index([email])
+  @@index([apiKey])
+  @@index([googleId])
+  @@map("users")
+}
+
+model File {
+  id            String         @id @default(cuid())
+  publicId      String         @unique
+  userId        String?
+  
+  // File metadata
+  originalName  String
+  s3Key         String         @unique
+  size          BigInt
+  mimeType      String
+  
+  // Thumbnail for images/videos
+  thumbnailS3Key String?
+  
+  // Visibility and lifecycle
+  visibility    FileVisibility @default(PUBLIC)
+  expiresAt     DateTime?
+  
+  // Stats
+  downloadsCount Int           @default(0)
+  viewsCount     Int           @default(0)
+  
+  // Virus scan
+  virusScanned  Boolean        @default(false)
+  virusSafe     Boolean        @default(true)
+  
+  // Flags
+  reported      Boolean        @default(false)
+  takenDown     Boolean        @default(false)
+  takedownReason String?
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  downloads     Download[]
+  reports       Report[]
+  
+  @@index([publicId])
+  @@index([userId])
+  @@index([s3Key])
+  @@index([createdAt])
+  @@map("files")
+}
+
+model Download {
+  id            String    @id @default(cuid())
+  fileId        String
+  
+  // Tracking
+  ip            String
+  userAgent     String?
+  country       String?
+  
+  // Download details
+  bytesServed   BigInt    @default(0)
+  completed     Boolean   @default(false)
+  
+  // Monetization
+  paid          Boolean   @default(false)
+  earningsCents Int       @default(0)
+  
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  file          File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  
+  @@index([fileId])
+  @@index([ip])
+  @@index([createdAt])
+  @@map("downloads")
+}
+
+model Payout {
+  id            String        @id @default(cuid())
+  userId        String
+  
+  amountCents   Int
+  status        PayoutStatus  @default(PENDING)
+  
+  // Payment details
+  paymentMethod String?
+  paymentEmail  String?
+  paymentAddress String?
+  
+  // Admin notes
+  adminNotes    String?
+  
+  requestedAt   DateTime      @default(now())
+  processedAt   DateTime?
+  paidAt        DateTime?
+  
+  // Relations
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([requestedAt])
+  @@map("payouts")
+}
+
+model Report {
+  id            String    @id @default(cuid())
+  fileId        String
+  
+  reporterIp    String
+  reporterEmail String?
+  reason        String
+  details       String?
+  
+  // Status
+  reviewed      Boolean   @default(false)
+  actionTaken   String?
+  
+  createdAt     DateTime  @default(now())
+  reviewedAt    DateTime?
+  
+  // Relations
+  file          File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  
+  @@index([fileId])
+  @@index([reviewed])
+  @@index([createdAt])
+  @@map("reports")
+}
+
+model BannedIp {
+  id            String    @id @default(cuid())
+  ip            String    @unique
+  reason        String?
+  
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime?
+  
+  @@index([ip])
+  @@map("banned_ips")
+}
+
+model SiteSettings {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  value         String
+  
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("site_settings")
+}

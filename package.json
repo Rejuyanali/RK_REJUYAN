@@ -1,0 +1,44 @@
+{
+  "name": "filehost-platform",
+  "version": "1.0.0",
+  "description": "Full-featured file hosting platform with premium tiers",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client",
+    "worker",
+    "telegram-bot"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install:server && npm run install:client && npm run install:worker && npm run install:bot",
+    "install:server": "cd server && npm install",
+    "install:client": "cd client && npm install",
+    "install:worker": "cd worker && npm install",
+    "install:bot": "cd telegram-bot && npm install",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:worker\"",
+    "dev:server": "cd server && npm run start:dev",
+    "dev:client": "cd client && npm run dev",
+    "dev:worker": "cd worker && npm run dev",
+    "dev:bot": "cd telegram-bot && npm run dev",
+    "build": "npm run build:server && npm run build:client && npm run build:worker && npm run build:bot",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "build:worker": "cd worker && npm run build",
+    "build:bot": "cd telegram-bot && npm run build",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm run test",
+    "test:client": "cd client && npm run test",
+    "migrate": "cd server && npx prisma migrate deploy",
+    "migrate:dev": "cd server && npx prisma migrate dev",
+    "seed": "cd server && npx prisma db seed",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down -v"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
